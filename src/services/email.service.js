@@ -29,7 +29,7 @@ project/
 // all the third party service will be handled in the services directory 
 // all the third party services related to email will be handled in this file
 
-require('dotenv').config();
+// require('dotenv').config();
 const nodemailer = require('nodemailer');
 // This transporter is used to send emails using Gmail (Google SMTP server)
 // We will use this in the auth controller to send emails (like welcome emails after user registration)
@@ -87,6 +87,5 @@ async function sendRegistrationEmail(userEmail, name) {
 }
 module.exports = 
 {
-    sendEmail,
     sendRegistrationEmail
 };

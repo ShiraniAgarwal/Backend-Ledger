@@ -22,14 +22,11 @@ async function userRegisterController(req, res){
     const user = await userModel.create({
         email,password, name
     }); // If the email is not already in use, create a new user document in the database using the User model’s create method. This will save the new user with the provided email, password, and name.
+    // Generate a JSON Web Token (JWT) for the newly registered user using the jwt.sign() method. The payload of the token includes the user’s ID and email, and it is signed with a secret key (process.env.JWT_SECRET) that should be defined in your environment variables for security purposes. The token will be used for authenticating the user in subsequent requests.
+    // Set the token to expire in 3 days. This means that the token will be valid for 72 hours after it is issued, and after that, the user will need to log in again to obtain a new token.
+    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: '3d' });
 
-    const token = jwt.sign({ // Generate a JSON Web Token (JWT) for the newly registered user using the jwt.sign() method. The payload of the token includes the user’s ID and email, and it is signed with a secret key (process.env.JWT_SECRET) that should be defined in your environment variables for security purposes. The token will be used for authenticating the user in subsequent requests.
-        id: user._id,        
-    }, process.env.JWT_SECRET, {
-        expiresIn: '3d' // Set the token to expire in 3 days. This means that the token will be valid for 72 hours after it is issued, and after that, the user will need to log in again to obtain a new token.
-    });
-
-    res.cookie("token", token) // Set a cookie named "token" with the generated JWT as its value. The cookie will be sent to the client and can be used for authentication in future requests. The options provided include:
+    res.cookie("token", token); // Set a cookie named "token" with the generated JWT as its value. The cookie will be sent to the client and can be used for authentication in future requests. The options provided include:
     res.status(201).json({
         user:{
             _id: user._id,
@@ -41,12 +38,9 @@ async function userRegisterController(req, res){
 
     // send welcome email to the user after registration
     // email tab bhejenge jab hum reponse bhej chuke hai
-    await emailService.sendRegistrationEmail(
-        user.email, // recipient email address (the email of the newly registered user)
-        "Welcome to our application!", // subject of the email
-        `Hi ${user.name}, welcome to our application! We're glad to have you on board.`, // plain text body of the email
-        `<h1>Hi ${user.name}, welcome to our application!</h1><p>We're glad to have you on board.</p>` // HTML body of the email for better formatting and design
-    ); // Use the sendEmail function from the email service to send a welcome email to the newly registered user. The function takes the recipient's email address, subject, plain text body, and HTML body as parameters to compose and send the email.
+    // recipient email address (the email of the newly registered user)
+    // Use the sendEmail function from the email service to send a welcome email to the newly registered user. The function takes the recipient's email address, subject, plain text body, and HTML body as parameters to compose and send the email.
+    await emailService.sendRegistrationEmail(user.email, user.name);
 }    
 
 /**
@@ -60,36 +54,32 @@ async function userLoginController(req, res){
     const user = await userModel.findOne({ email }).select("+password"); // Query the User model to find a user document with the provided email. The select("+password") part is used to include the password field in the query result, as it is excluded by default in the User schema for security reasons. This will allow us to access the hashed password for comparison later on.
 
     if(!user){
-        return res.status(400).json({
+        return res.status(401).json({
             message: "Email or password is INVALID"
-        }); // If no user is found with the provided email, return a 400 Bad Request response with a JSON object indicating that the login was unsuccessful and providing a message that the email or password is invalid.
+        }); // If no user is found with the provided email, return a 401 Unauthorized response with a JSON object indicating that the login was unsuccessful and providing a message that the email or password is invalid.
     }
     // if user is found then we will compare the password
     const isValidPassword = await user.comparePassword(password); // Use the comparePassword method defined in the User model to compare the provided password with the hashed password stored in the database. This will return true if the passwords match and false if they don’t.
 
     if(!isValidPassword){
-        return res.status(400).json({
+        return res.status(401).json({
             message: "Email or password is INVALID"
-        }); // If the provided password does not match the stored password, return a 400 Bad Request response with a JSON object indicating that the login was unsuccessful and providing a message that the email or password is invalid.
+        }); // If the provided password does not match the stored password, return a 401 Unauthorized response with a JSON object indicating that the login was unsuccessful and providing a message that the email or password is invalid.
     }
-        // if password is valid then we will generate a token for the user
-        const token = jwt.sign({ // Generate a JSON Web Token (JWT) for the authenticated user using the jwt.sign() method. The payload of the token includes the user’s ID and email, and it is signed with a secret key (process.env.JWT_SECRET) that should be defined in your environment variables for security purposes. The token will be used for authenticating the user in subsequent requests.
-            userid: user._id,        
-        }, process.env.JWT_SECRET, {
-            expiresIn: '3d' // Set the token to expire in 3 days. This means that the token will be valid for 72 hours after it is issued, and after that, the user will need to log in again to obtain a new token.
-        });
+    // if password is valid then we will generate a token for the user
+    // Generate a JSON Web Token (JWT) for the authenticated user using the jwt.sign() method. The payload of the token includes the user’s ID and email, and it is signed with a secret key (process.env.JWT_SECRET) that should be defined in your environment variables for security purposes. The token will be used for authenticating the user in subsequent requests.
+    // Set the token to expire in 3 days. This means that the token will be valid for 72 hours after it is issued, and after that, the user will need to log in again to obtain a new token.
+    const token = jwt.sign({userid: user._id, email: user.email}, process.env.JWT_SECRET, { expiresIn: '3d' });
 
-        res.cookie("token", token) // Set a cookie named "token" with the generated JWT as its value. The cookie will be sent to the client and can be used for authentication in future requests. The options provided include:
-        res.status(200).json({
-            user:{
-                _id: user._id,
-                email: user.email,
-                name: user.name
-            },
-            token
-        }); // Return a 201 Created response with a JSON object indicating that the login was successful, along with the user’s information and the generated token. This allows the client to receive the token immediately after logging in, which can be used for authentication in subsequent requests.
-
-    
+    res.cookie("token", token) // Set a cookie named "token" with the generated JWT as its value. The cookie will be sent to the client and can be used for authentication in future requests. The options provided include:
+    res.status(200).json({
+        user:{
+            _id: user._id,
+            email: user.email,
+            name: user.name
+        },
+        token
+    }); // Return a 201 Created response with a JSON object indicating that the login was successful, along with the user’s information and the generated token. This allows the client to receive the token immediately after logging in, which can be used for authentication in subsequent requests.
 }
 
 /* 

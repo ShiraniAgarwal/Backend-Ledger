@@ -11,3 +11,7 @@ router.post("/register",authController.userRegisterController); // Define a POST
 router.post("/login",authController.userLoginController); // Define a POST route for the /login endpoint that will be handled by the userLoginController function from the authController. This means that when a client makes a POST request to /api/auth/login, the userLoginController function will be executed to handle the login logic.
 
 module.exports = router;
+module.exports = {
+    createAccountController,
+    getUserAccountsController
+}; // Export the createAccountController and getUserAccountsController functions so that they can be imported and used in other parts of the application, such as in route handlers where we want to handle account creation and retrieval requests. This allows us to keep our controller logic organized and modularized across different files in our application.
